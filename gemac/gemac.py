@@ -1,6 +1,6 @@
 from myhdl import block, Signal, intbv
-from gemac.txEngine_old import txengine
-from gemac.rxEngine_old import rxengine
+from gemac.txEngine import txengine
+from gemac.rxEngine import rxengine
 from .gmii import gmii
 from .flowControl import flowcontrol
 from .management import management
