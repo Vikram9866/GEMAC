@@ -8,6 +8,22 @@ txstate = enum('IDLE', 'PREAMBLE', 'SFD', 'FIRSTBYTE', 'INFRAME', 'PADDING',
 
 @block
 def txengine(txclientintf, txgmii_intf, txflowintf, txconfig, sysreset):
+    """Transmit Engine.
+
+    Accepts Ethernet frame data from the Client Transmitter interface,
+    adds preamble to the start of the frame, add padding bytes and frame
+    check sequence. It ensures that the inter-frame spacing between successive
+    frames is at least the minimum specified. The frame is then converted
+    into a format that is compatible with the GMII and sent to the GMII Block.
+
+    Args:
+        txclientintf (TxClientFIFO) - transmit streaming data interface from transmit FIFO.
+        txgmii_intf (TxGMII_Interface) - transmit streaming data interface to GMII.
+        flow_intf (TxFlowInterface) - transmit flow control interface.
+        txconfig (Signal/intbv)(32 bit) - configregisters - Transmitter configuration word.
+            See Xilinx_UG144 pdf, Table 8.5, Pg-80 for detailed description.
+        reset - System reset
+    """
 
     state = Signal(txstate.IDLE)
     curbyte = Signal(intbv(1, min=0, max=10000))
@@ -40,6 +56,7 @@ def txengine(txclientintf, txgmii_intf, txflowintf, txconfig, sysreset):
 
     @always_seq(txclientintf.clk.posedge, reset)
     def curbyteinc():
+        """ Index Incrementer """
         if state == txstate.IDLE:
             curbyte.next = 1
         else:
@@ -47,6 +64,7 @@ def txengine(txclientintf, txgmii_intf, txflowintf, txconfig, sysreset):
 
     @always_seq(txclientintf.clk.posedge, reset)
     def pausecntrl():
+        """ Pause request sampler. """
         if txflowintf.pausereq:
             pausereq.next = 1
         elif state == txstate.SENDPAUSE:
@@ -54,6 +72,7 @@ def txengine(txclientintf, txgmii_intf, txflowintf, txconfig, sysreset):
 
     @always_seq(txclientintf.clk.posedge, reset)
     def transmitter():
+        """ Transmitter logic """
         txen = txconfig[28]
         if txclientintf.underrun:
             state.next = txstate.ERROR
